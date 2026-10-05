@@ -1,0 +1,127 @@
+name: CI
+
+on:
+  push:
+    branches:
+        - main
+  pull_request:
+    branches:
+        - main      
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  rust-check:
+    name: Rust Check & Test
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: backspace-db
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d backspace-db"
+          --health-interval 3s
+          --health-timeout 3s
+          --health-retries 20
+
+    env:
+      DATABASE_URL: postgres://postgres:postgres@localhost:5432/backspace-db
+      RUST_BACKTRACE: 1
+      CARGO_TERM_COLOR: always
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Cache Cargo dependencies
+        uses: Swatinem/rust-cache@v2
+
+      - name: Install PostgreSQL client
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
+
+      - name: Apply database migrations
+        run: |
+          for f in migrations/*.sql; do
+            [ -e "$f" ] || continue
+            echo "Applying migration: $f"
+            psql "$DATABASE_URL" -f "$f"
+          done
+
+      - name: Check formatting
+        run: cargo fmt --check
+
+      - name: Run clippy
+        run: cargo clippy --all-targets --all-features -- -D warnings
+
+      - name: Run tests
+        run: cargo test --locked
+
+  docker-smoke-test:
+    name: Docker Smoke Test
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Prepare .env
+        run: |
+          if [ -f .env.example ]; then
+            cp .env.example .env
+          else
+            touch .env
+          fi
+
+      - name: Build and start Docker Compose stack
+        run: docker compose up --build -d
+
+      - name: Show Docker Compose status
+        run: docker compose ps
+
+      - name: Wait for API to be ready
+        run: |
+          echo "Waiting for API..."
+          for i in $(seq 1 30); do
+            if curl -sf http://localhost:3000/health > /dev/null; then
+              echo "API is ready"
+              exit 0
+            fi
+
+            echo "API not ready yet, retrying..."
+            sleep 2
+          done
+
+          echo "API failed to start"
+          docker compose logs
+          exit 1
+
+      - name: Smoke test health endpoint
+        run: |
+          curl -sf http://localhost:3000/health
+          echo ""
+
+      - name: Show logs on failure
+        if: failure()
+        run: docker compose logs
+
+      - name: Cleanup Docker Compose
+        if: always()
+        run: docker compose down -v

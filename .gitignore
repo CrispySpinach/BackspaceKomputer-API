@@ -1,0 +1,78 @@
+# =========================
+# Rust / Cargo
+# =========================
+
+# Rust build output
+/target/
+
+# Cargo lock
+# Keep Cargo.lock for applications/binaries.
+# Uncomment this only if you're building a library.
+# Cargo.lock
+
+# =========================
+# Environment / Secrets
+# =========================
+
+.env
+.env.*
+!.env.example
+
+# =========================
+# PostgreSQL
+# =========================
+
+# Local PostgreSQL data directories
+postgres-data/
+pgdata/
+postgres/
+
+# PostgreSQL logs
+*.log
+
+# =========================
+# IDE / Editors
+# =========================
+
+# VS Code
+.vscode/
+
+# JetBrains / IntelliJ / RustRover
+.idea/
+
+# Vim
+*.swp
+*.swo
+
+# Emacs
+*~
+
+# =========================
+# OS Files
+# =========================
+
+# Linux
+.directory
+
+# macOS
+.DS_Store
+
+# Windows
+Thumbs.db
+Desktop.ini
+
+# =========================
+# Debug / Temporary Files
+# =========================
+
+*.tmp
+*.temp
+*.bak
+
+# =========================
+# Database Dumps
+# =========================
+
+*.sql.gz
+*.dump
+*.backup
