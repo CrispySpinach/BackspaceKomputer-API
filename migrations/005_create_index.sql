@@ -1,0 +1,12 @@
+CREATE INDEX idx_admin_id_role ON admin(id_role);
+CREATE INDEX idx_produk_id_kategori ON produk(id_kategori);
+CREATE INDEX idx_produk_id_admin ON produk(id_admin);
+CREATE INDEX idx_produk_status ON produk(status);
+CREATE INDEX idx_pesanan_id_customer ON pesanan(id_customer);
+CREATE INDEX idx_pesanan_id_admin ON pesanan(id_admin);
+CREATE INDEX idx_pesanan_tanggal_pesanan ON pesanan(tanggal_pesanan DESC);
+CREATE INDEX idx_detail_pesanan_id_pesanan ON detail_pesanan(id_pesanan);
+CREATE INDEX idx_detail_pesanan_id_produk ON detail_pesanan(id_produk);
+CREATE INDEX idx_stok_movement_id_produk ON stok_movement(id_produk);
+CREATE INDEX idx_stok_movement_id_pesanan ON stok_movement(id_pesanan);
+CREATE INDEX idx_stok_movement_jenis ON stok_movement(jenis);
