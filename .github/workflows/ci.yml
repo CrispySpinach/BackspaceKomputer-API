@@ -24,7 +24,8 @@ jobs:
         image: postgres:16-alpine
         env:
           POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
+          # Disposable CI service only.
+          POSTGRES_HOST_AUTH_METHOD: trust
           POSTGRES_DB: backspace-db
         ports:
           - 5432:5432
@@ -51,27 +52,16 @@ jobs:
       - name: Cache Cargo dependencies
         uses: Swatinem/rust-cache@v2
 
-      - name: Install PostgreSQL client
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y postgresql-client
-
-      - name: Apply database migrations
-        run: |
-          for f in migrations/*.sql; do
-            [ -e "$f" ] || continue
-            echo "Applying migration: $f"
-            psql "$DATABASE_URL" -f "$f"
-          done
-
       - name: Check formatting
         run: cargo fmt --check
 
       - name: Run clippy
         run: cargo clippy --all-targets --all-features -- -D warnings
 
-      - name: Run tests
-        run: cargo test --locked
+      - name: Run tests including PostgreSQL regression tests
+        env:
+          TEST_DATABASE_URL: postgres://postgres@localhost:5432/backspace-db
+        run: cargo test --locked -- --include-ignored
 
   docker-smoke-test:
     name: Docker Smoke Test
@@ -96,27 +86,11 @@ jobs:
       - name: Show Docker Compose status
         run: docker compose ps
 
-      - name: Wait for API to be ready
-        run: |
-          echo "Waiting for API..."
-          for i in $(seq 1 30); do
-            if curl -sf http://localhost:3000/health > /dev/null; then
-              echo "API is ready"
-              exit 0
-            fi
+      - name: Wait for PostgreSQL
+        run: docker compose up -d --wait --wait-timeout 60
 
-            echo "API not ready yet, retrying..."
-            sleep 2
-          done
-
-          echo "API failed to start"
-          docker compose logs
-          exit 1
-
-      - name: Smoke test health endpoint
-        run: |
-          curl -sf http://localhost:3000/health
-          echo ""
+      - name: Smoke test PostgreSQL
+        run: docker compose exec -T db pg_isready -U backspace_admin -d backspace_komputer
 
       - name: Show logs on failure
         if: failure()

@@ -26,6 +26,8 @@
 postgres-data/
 pgdata/
 postgres/
+postman/
+.postman/
 
 # PostgreSQL logs
 *.log
