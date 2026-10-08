@@ -2,10 +2,12 @@
 use crate::{AppState, models::*};
 use axum::{Json, extract::State, http::StatusCode, response::IntoResponse};
 
-fn database_error(error: sqlx::Error) -> axum::response::Response {
+pub(crate) fn database_error(error: sqlx::Error) -> axum::response::Response {
     let code = error.as_database_error().and_then(|e| e.code());
     let (status, message) = match code.as_deref() {
-        Some("22023" | "22P02" | "23514" | "23503") => (
+        Some("P0002") => (StatusCode::NOT_FOUND, "Resource not found"),
+        Some("28000") => (StatusCode::UNAUTHORIZED, "Authentication required"),
+        Some("22023" | "22003" | "22001" | "22P02" | "23502" | "23514" | "23503") => (
             StatusCode::BAD_REQUEST,
             "Invalid request or insufficient stock",
         ),
